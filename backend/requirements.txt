@@ -1,0 +1,12 @@
+nltk
+sentence-transformers
+spacy
+numpy<2
+pybind11
+torch
+torchvision
+tf-keras
+fastapi
+uvicorn
+python-multipart
+pdfplumber
