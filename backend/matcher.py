@@ -1,101 +1,93 @@
-# --- matcher.py ---
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
 import numpy as np
 
-# Load SBERT model
-sbert = SentenceTransformer("all-MiniLM-L6-v2")
-
-# Weights for scoring each section with proper section mapping
+# Weights for each aligned JD section
 weights = {
-    "skills": 0.3,
-    "experience": 0.25,
-    "qualifications": 0.25,  # Added to match JD sections
-    "responsibilities": 0.15, # Added to match JD sections
-    "education": 0.05,       # Reduced weight since it may not be in JD
-    "certifications": 0.0    # Zero weight until we address mapping
+    "responsibilities": 0.5,
+    "qualifications": 0.5
 }
 
-# Map resume sections to JD sections for comparison
-section_mapping = {
-    "education": ["qualifications", "education"],  # Check resume education against JD qualifications too
-    "skills": ["skills"],
-    "experience": ["experience"],
-    "certifications": ["qualifications", "certifications"],
-    "projects": ["experience", "skills"]  # Projects can match against experience or skills
-}
+# Function to compute cosine similarity with fallback
+def safe_cos_sim(vec1, vec2):
+    if vec1 is None or vec2 is None:
+        return 0.0
+    return float(util.cos_sim(vec1, vec2).item())
 
-def calculate_match_score(jd_sections, resume_sections):
-    score = 0.0
+# Enhanced explanation with match levels
+def interpret_match(label, score):
+    if score >= 0.75:
+        return f"✅ Strong alignment in {label}: {round(score * 100, 1)}%"
+    elif score >= 0.5:
+        return f"⚠️ Partial alignment in {label}: {round(score * 100, 1)}%"
+    else:
+        return f"❌ Weak alignment in {label}: {round(score * 100, 1)}%"
+
+# Matching logic
+def calculate_match_score(jd_embeddings, resume_embeddings):
     explanation = []
-    total_weight = 0.0
-    
-    # Debug output
-    print(f"JD sections: {list(jd_sections.keys())}")
-    print(f"Resume sections: {list(resume_sections.keys())}")
-    
-    # Process JD sections with weights
-    for resume_section, weight in weights.items():
-        # Skip sections with zero weight
-        if weight == 0:
-            continue
-            
-        resume_text = " ".join(resume_sections.get(resume_section, []))
-        
-        # For each resume section, check mapped JD sections
-        jd_section_matches = []
-        jd_section_texts = []
-        
-        # Get possible JD sections to compare against (using mapping or direct match)
-        jd_section_names = section_mapping.get(resume_section, [resume_section])
-        
-        for jd_section_name in jd_section_names:
-            jd_text = " ".join(jd_sections.get(jd_section_name, []))
-            if jd_text:
-                jd_section_texts.append(jd_text)
-        
-        # Combine all relevant JD texts
-        combined_jd_text = " ".join(jd_section_texts)
-        
-        if combined_jd_text and resume_text:
-            jd_emb = sbert.encode(combined_jd_text, convert_to_tensor=True)
-            resume_emb = sbert.encode(resume_text, convert_to_tensor=True)
-            sim = float(util.cos_sim(jd_emb, resume_emb).item())
-            
-            # Debug print the similarity score
-            print(f"Section {resume_section}: Similarity = {sim:.4f}")
-            
-            score += sim * weight
-            total_weight += weight
-            explanation.append(f"{resume_section.title()}: {round(sim*100, 1)}% match")
-        else:
-            if not combined_jd_text:
-                print(f"No JD text for section {resume_section}")
-            if not resume_text:
-                print(f"No resume text for section {resume_section}")
-            explanation.append(f"{resume_section.title()}: No info available")
-    
-    # Normalize score if we have weights
-    if total_weight > 0:
-        score = score / total_weight
-    
-    print(f"Final score: {score:.4f}")
-    return round(score, 3), explanation
+    total_score = 0.0
 
-def match_all_resumes(jd_sections, resume_data):
+    # Responsibilities: experience + projects
+    jd_resp = jd_embeddings.get("responsibilities")
+    resume_resp = _combine_embeddings([
+        resume_embeddings.get("experience"),
+        resume_embeddings.get("projects")
+    ])
+    sim_resp = safe_cos_sim(jd_resp, resume_resp)
+    total_score += sim_resp * weights["responsibilities"]
+    explanation.append(interpret_match("Responsibilities", sim_resp))
+
+    # Qualifications: education + certs + skills
+    jd_qual = jd_embeddings.get("qualifications")
+    resume_qual = _combine_embeddings([
+        resume_embeddings.get("education"),
+        resume_embeddings.get("certifications"),
+        resume_embeddings.get("skills")
+    ])
+    sim_qual = safe_cos_sim(jd_qual, resume_qual)
+    total_score += sim_qual * weights["qualifications"]
+    explanation.append(interpret_match("Qualifications", sim_qual))
+
+    return round(total_score, 3), explanation
+
+# Combine multiple numpy vectors into one
+def _combine_embeddings(embeddings_list):
+    valid = [vec for vec in embeddings_list if vec is not None]
+    if not valid:
+        return None
+    return np.mean(valid, axis=0)
+
+# Main matcher
+def match_all_resumes(jd_title, jd_embeddings, resume_data, threshold=0.8):
     matched_candidates = []
 
+    print(f"\n📌 Matching resumes against JD: **{jd_title}**\n")
+
     for filename, data in resume_data.items():
-        parsed = data["parsed"]
-        embedding = data["embedding"]
-        name = parsed.get("name", [filename])[0]
+        parsed = data.get("parsed", {})
+        embeddings = data.get("embedding", {})
 
-        score, reasoning = calculate_match_score(jd_sections, parsed)
+        name = _extract_name(parsed, fallback=filename)
+        score, explanation = calculate_match_score(jd_embeddings, embeddings)
 
-        if score >= 0.0: # Adjust threshold as needed
+        print(f"🔍 {name} — Score: {round(score*100, 1)}%")
+        for line in explanation:
+            print("   •", line)
+        print("✅ Shortlisted\n" if score >= threshold else "❌ Not shortlisted\n")
+
+        if score >= threshold:
             matched_candidates.append({
                 "name": name,
                 "score": score,
-                "reasoning": reasoning
+                "reasoning": explanation
             })
 
     return matched_candidates
+
+# Name extractor fallback
+def _extract_name(parsed, fallback="Unknown"):
+    name_lines = parsed.get("name", [])
+    for line in name_lines:
+        if line and any(c.isalpha() for c in line):
+            return line.strip()
+    return fallback

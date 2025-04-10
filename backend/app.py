@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 import tempfile
 import os
 import shutil
@@ -9,10 +9,13 @@ from typing import List, Dict, Any
 import json
 import numpy as np
 from pathlib import Path
+import asyncio
+from sentence_transformers import SentenceTransformer
 
 from jd_embedding_utils import generate_jd_embedding, extract_sections
 from resume_embedding_utils import pdf_to_text, extract_resume_sections, generate_resume_embedding
-from matcher import calculate_match_score
+from matcher import calculate_match_score, match_all_resumes
+from email_utils import send_email
 
 app = FastAPI()
 
@@ -33,6 +36,12 @@ class MatchRequest(BaseModel):
     jd_sections: Dict[str, List[str]]
     resume_data: Dict[str, Dict[str, Any]]
 
+class EmailRequest(BaseModel):
+    email: str
+    name: str
+    subject: str
+    body: str
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -44,6 +53,9 @@ current_session = {
     "jd": None,
     "resumes": {}
 }
+
+# Create a single model instance for reuse
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 @app.post("/embed")
 def get_embedding(request: JDRequest):
@@ -58,9 +70,14 @@ def get_embedding(request: JDRequest):
         "sections": sections
     }
     
+    # Convert embedding dictionary properly for JSON response
+    serializable_embedding = json.loads(
+        json.dumps(embedding, cls=NumpyEncoder)
+    )
+    
     return {
         "title": title,
-        "embedding": embedding.tolist(),
+        "embedding": serializable_embedding,
         "sections": sections
     }
 
@@ -74,39 +91,32 @@ async def upload_resumes(files: List[UploadFile] = File(...)):
     with tempfile.TemporaryDirectory() as temp_dir:
         resume_results = {}
         
+        # First save all files to disk to avoid keeping file handles open too long
+        file_paths = []
         for file in files:
-            # Save the uploaded file temporarily
             file_path = os.path.join(temp_dir, file.filename)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
+            file_paths.append((file.filename, file_path))
+        
+        # Process files in batches to avoid memory issues
+        batch_size = 3
+        for i in range(0, len(file_paths), batch_size):
+            batch = file_paths[i:i+batch_size]
+            batch_tasks = []
             
-            try:
-                # Extract text from PDF
-                text = pdf_to_text(file_path)
-                
-                # Parse resume sections
-                parsed_sections = extract_resume_sections(text)
-                
-                # Generate embedding
-                embedding = generate_resume_embedding(parsed_sections)
-                
-                # Store results
-                resume_results[file.filename] = {
-                    "parsed": parsed_sections,
-                    "embedding": embedding,
-                    "text": text
-                }
-                
+            for filename, file_path in batch:
+                batch_tasks.append(process_resume(filename, file_path))
+            
+            # Process each batch concurrently
+            batch_results = await asyncio.gather(*batch_tasks)
+            
+            # Combine results
+            for filename, result in batch_results:
+                resume_results[filename] = result
                 # Add to current session
-                current_session["resumes"][file.filename] = {
-                    "parsed": parsed_sections,
-                    "embedding": embedding,
-                    "text": text
-                }
-                
-            except Exception as e:
-                print(f"Error processing {file.filename}: {str(e)}")
-                resume_results[file.filename] = {"error": str(e)}
+                if "error" not in result:
+                    current_session["resumes"][filename] = result
     
     # Convert NumPy arrays to lists for JSON response
     serializable_results = json.loads(
@@ -114,6 +124,43 @@ async def upload_resumes(files: List[UploadFile] = File(...)):
     )
     
     return JSONResponse(content=serializable_results)
+
+async def process_resume(filename, file_path):
+    """Process a single resume PDF file"""
+    try:
+        # Extract text from PDF
+        text = pdf_to_text(file_path)
+        
+        # Parse resume sections
+        parsed_sections = extract_resume_sections(text)
+        
+        # Generate section-specific embeddings for matching
+        section_embeddings = {
+            "experience": None,
+            "education": None, 
+            "skills": None,
+            "projects": None,
+            "certifications": None
+        }
+        
+        # Generate embeddings for each section if available
+        for section in section_embeddings.keys():
+            if section in parsed_sections and parsed_sections[section]:
+                section_text = " ".join(parsed_sections[section])
+                if section_text.strip():
+                    # Use the global model instance
+                    section_embeddings[section] = model.encode(section_text, convert_to_numpy=True)
+        
+        # Return results for this resume
+        return filename, {
+            "parsed": parsed_sections,
+            "embedding": section_embeddings,
+            "text": text
+        }
+                
+    except Exception as e:
+        print(f"Error processing {filename}: {str(e)}")
+        return filename, {"error": str(e)}
 
 @app.post("/match")
 def match_resumes():
@@ -124,28 +171,56 @@ def match_resumes():
     if not current_session["resumes"]:
         raise HTTPException(status_code=400, detail="No resumes processed yet")
     
-    jd_sections = current_session["jd"]["sections"]
+    jd_title = current_session["jd"].get("title", "Unknown Position")
+    jd_embeddings = current_session["jd"].get("embedding", {})
     
     # Match each resume against the JD
     matches = []
     for filename, resume_data in current_session["resumes"].items():
         parsed = resume_data["parsed"]
-        name = parsed.get("name", [filename])[0] if "name" in parsed and parsed["name"] else Path(filename).stem
+        embedding = resume_data.get("embedding", {})
         
-        score, reasoning = calculate_match_score(jd_sections, parsed)
+        # Extract name from parsed resume or use filename
+        name = _extract_name(parsed, filename)
+        
+        # Use the matcher module's calculate_match_score function with the correct parameters
+        score, reasoning = calculate_match_score(jd_embeddings, embedding)
         
         matches.append({
             "name": name,
             "filename": filename,
             "score": score,
             "reasoning": reasoning,
-            "isMatch": score >= 0.4  # Lower threshold from 0.6 to 0.4
+            "isMatch": score >= 0.4  # Threshold for matching
         })
     
     # Sort matches by score in descending order
     matches.sort(key=lambda x: x["score"], reverse=True)
     
     return {"matches": matches}
+
+@app.post("/send-email")
+def send_candidate_email(request: EmailRequest):
+    """Send an email to a candidate"""
+    try:
+        result = send_email(
+            to_email=request.email,
+            subject=request.subject,
+            body=request.body
+        )
+        
+        if result["success"]:
+            return {"success": True, "message": f"Email sent to {request.name}"}
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Helper function to extract name from parsed resume
+def _extract_name(parsed, fallback):
+    if "name" in parsed and parsed["name"] and len(parsed["name"]) > 0:
+        return parsed["name"][0]
+    return Path(fallback).stem
 
 @app.get("/clear-session")
 def clear_session():

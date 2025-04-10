@@ -10,3 +10,5 @@ fastapi
 uvicorn
 python-multipart
 pdfplumber
+python-dotenv
+email-validator

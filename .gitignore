@@ -29,10 +29,11 @@ htmlcov/
 
 # Node/React
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-.pnpm-debug.log
+/frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 .npm
 .yarn-integrity
 .env.local
@@ -41,10 +42,9 @@ yarn-error.log
 .env.production.local
 .cache/
 .parcel-cache/
-dist/
+/frontend/dist/
+/frontend/build/
 coverage/
-frontend/build/
-frontend/dist/
 
 # IDEs and editors
 .idea/
@@ -74,13 +74,37 @@ temp/
 .tmp/
 *.tmp
 *.bak
-# Allow Dataset directory but ignore other data directories
-data/
-!Dataset/
-!Dataset/**
+
+# Data directories - exclude everything except the Dataset directory
+/data/
+/uploads/
+/processed/
+
+# Explicitly include the Dataset directory and all its contents
+!/Dataset/
+!/Dataset/**
 
 # Environment variables and secrets
 .env
-.env.local
+.env.production
 *.pem
 credentials.json
+secrets.json
+
+# Backend specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.coverage
+htmlcov/
+.pytest_cache/
+.coverage.*
+/backend/uploads/
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.temp
