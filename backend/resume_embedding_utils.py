@@ -113,7 +113,7 @@ def extract_resume_sections(text):
                     continue
             sections[current_section].append(line)
 
-    if name_found:
+    if name_found and name_found not in sections.get("name", []):
         sections["name"].insert(0, name_found)
 
     return dict(sections)

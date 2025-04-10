@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiFileText, FiSearch } from 'react-icons/fi';
+import { FiFileText, FiSearch, FiArrowRight } from 'react-icons/fi';
 
 const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
   const [jobDescription, setJobDescription] = useState(() => {
@@ -36,18 +36,18 @@ const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm transition-all hover:shadow-md">
+    <div className="bg-white p-5 rounded-lg shadow-sm">
       <div className="flex items-center mb-4">
-        <div className="bg-primary-50 p-2 rounded-full mr-3">
-          <FiFileText className="text-primary-600 h-5 w-5" />
+        <div className="bg-indigo-50 p-2 rounded-lg mr-3">
+          <FiFileText className="text-indigo-600 h-5 w-5" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Job Description Analysis</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Job Description Analysis</h2>
       </div>
       
       <p className="text-gray-600 mb-4 text-sm">
-        Paste a job description below to analyze key requirements, responsibilities, and qualifications for matching.
+        Paste a job description below to analyze its key requirements, responsibilities, and qualifications.
         {savedData && (
-          <span className="ml-1 text-primary-600">
+          <span className="ml-1 text-indigo-600">
             A job description has already been analyzed.
           </span>
         )}
@@ -55,13 +55,10 @@ const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="transition-all duration-300 focus-within:shadow-sm rounded-lg">
-          <label htmlFor="jobDescription" className="block text-sm font-medium text-gray-700 mb-2">
-            Job Description:
-          </label>
           <textarea
             id="jobDescription"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
-            rows="10"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all"
+            rows="8"
             value={jobDescription}
             onChange={handleChange}
             placeholder="Enter the job description text here..."
@@ -76,38 +73,43 @@ const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
           </div>
         </div>
         
-        <div className="flex space-x-3">
-          <button
-            type="submit"
-            className={`btn flex-1 flex items-center justify-center transition-all ${
-              isLoading 
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
-                : 'btn-primary hover:shadow'
-            }`}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="loading-pulse mr-2">Analyzing...</span>
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
-              </>
-            ) : (
-              <>
-                <FiSearch className="mr-2" />
-                {savedData ? 'Re-Analyze Description' : 'Analyze Job Description'}
-              </>
-            )}
-          </button>
-          
-          {savedData && (
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            {savedData && "Our AI agents will analyze the job description to extract key requirements."}
+          </div>
+          <div className="flex space-x-3">
             <button
-              type="button"
-              onClick={() => window.location.href = "#step2"}
-              className="btn bg-green-600 text-white hover:bg-green-700 px-4"
+              type="submit"
+              className={`btn flex items-center justify-center ${
+                isLoading 
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
+                  : 'btn-primary bg-indigo-600 hover:bg-indigo-700'
+              }`}
+              disabled={isLoading}
             >
-              Continue to Next Step
+              {isLoading ? (
+                <>
+                  <span className="mr-2">Analyzing</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                </>
+              ) : (
+                <>
+                  {savedData ? 'Re-analyze' : 'Analyze Job Description'}
+                </>
+              )}
             </button>
-          )}
+            
+            {savedData && (
+              <button
+                type="button"
+                onClick={() => window.location.href = "#step2"}
+                className="btn flex items-center gap-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+              >
+                <span>Continue</span>
+                <FiArrowRight size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </form>
     </div>

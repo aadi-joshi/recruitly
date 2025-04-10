@@ -6,36 +6,35 @@ import ResultsDisplay from './components/ResultsDisplay';
 import MatchingResults from './components/MatchingResults';
 import WorkflowSteps from './components/WorkflowSteps';
 import CustomEmailForm from './components/CustomEmailForm';
+import DashboardOverview from './components/DashboardOverview';
 import { ToastContainer, toast } from 'react-toastify';
 import axios from 'axios';
-import { FiMail } from 'react-icons/fi';
+import { FiMail, FiRefreshCw } from 'react-icons/fi';
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
-  // Initialize state from localStorage if available
   const [activeStep, setActiveStep] = useState(() => {
     const savedStep = localStorage.getItem('activeStep');
     return savedStep ? parseInt(savedStep, 10) : 1;
   });
-  
+
   const [loading, setLoading] = useState(false);
-  
+
   const [jdResults, setJdResults] = useState(() => {
     const savedResults = localStorage.getItem('jdResults');
     return savedResults ? JSON.parse(savedResults) : null;
   });
-  
+
   const [resumeResults, setResumeResults] = useState(() => {
     const savedResults = localStorage.getItem('resumeResults');
     return savedResults ? JSON.parse(savedResults) : [];
   });
-  
+
   const [matchResults, setMatchResults] = useState(() => {
     const savedResults = localStorage.getItem('matchResults');
     return savedResults ? JSON.parse(savedResults) : null;
   });
 
-  // Animation state for page transitions
   const [animatingOut, setAnimatingOut] = useState(false);
   const [currentView, setCurrentView] = useState(() => {
     const savedStep = localStorage.getItem('activeStep');
@@ -44,7 +43,6 @@ function App() {
 
   const [customEmailModalOpen, setCustomEmailModalOpen] = useState(false);
 
-  // Persist state to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('activeStep', activeStep.toString());
   }, [activeStep]);
@@ -78,7 +76,6 @@ function App() {
     }
   }, [activeStep, currentView]);
 
-  // Enhanced toast configuration
   const notifySuccess = (message) => toast.success(message, {
     position: "top-right",
     autoClose: 3000,
@@ -109,7 +106,7 @@ function App() {
       });
       setJdResults(response.data);
       notifySuccess('Job description successfully analyzed!');
-      setActiveStep(2); // Move to resume upload step
+      setActiveStep(2);
     } catch (error) {
       console.error('Error analyzing job description:', error);
       notifyError('Error analyzing job description. Please check if the backend server is running.');
@@ -120,31 +117,31 @@ function App() {
 
   const handleResumeUpload = async (files) => {
     if (files.length === 0) return;
-    
+
     setLoading(true);
-    
+
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
     });
-    
+
     try {
       const response = await axios.post('/api/upload-resumes', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       const results = response.data;
       const processedResumes = Object.keys(results).map(filename => ({
         name: filename,
         ...results[filename]
       }));
-      
+
       setResumeResults(processedResumes);
       notifySuccess(`Successfully processed ${processedResumes.length} resumes!`);
-      setActiveStep(3); // Move to matching step
-      
+      setActiveStep(3);
+
     } catch (error) {
       console.error('Error processing resumes:', error);
       notifyError('Error processing resumes. Please check if files are valid PDFs.');
@@ -158,17 +155,16 @@ function App() {
       toast.warning('Please complete both job description analysis and resume upload first.');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      // Only make the API call if we don't already have match results
       if (!matchResults) {
         const response = await axios.post('/api/match');
         setMatchResults(response.data);
         notifySuccess('Matching completed successfully!');
       }
-      setActiveStep(3); // Move to matching step
+      setActiveStep(3);
     } catch (error) {
       console.error('Error during matching:', error);
       notifyError('Error during matching process. Please try again.');
@@ -184,13 +180,12 @@ function App() {
       setResumeResults([]);
       setMatchResults(null);
       setActiveStep(1);
-      
-      // Clear localStorage
+
       localStorage.removeItem('jdResults');
       localStorage.removeItem('resumeResults');
       localStorage.removeItem('matchResults');
       localStorage.removeItem('activeStep');
-      
+
       toast.info('Workflow reset. You can start a new session.');
     } catch (error) {
       console.error('Error resetting workflow:', error);
@@ -199,36 +194,32 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <ToastContainer 
         position="top-right"
         autoClose={3000}
         limit={3}
         newestOnTop
         closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
         pauseOnHover
         theme="light"
       />
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8 flex-grow">
-        <div className="flex justify-between items-center">
-          <WorkflowSteps activeStep={activeStep} setActiveStep={setActiveStep} />
-          
-          <button
-            onClick={() => setCustomEmailModalOpen(true)}
-            className="btn-primary btn flex items-center"
-          >
-            <FiMail className="mr-2" />
-            <span>Send Custom Email</span>
-          </button>
-        </div>
+      <div className="container mx-auto px-4 py-6 flex-grow max-w-6xl">
+        <WorkflowSteps activeStep={activeStep} setActiveStep={setActiveStep} />
         
-        <div className={`mt-8 transition-opacity duration-300 ${animatingOut ? 'opacity-0' : 'opacity-100'}`}>
-          {/* Step 1: Job Description Analysis */}
+        {(jdResults || resumeResults.length > 0 || matchResults) && (
+          <div className="mt-6">
+            <DashboardOverview 
+              jdResults={jdResults} 
+              resumeResults={resumeResults}
+              matchResults={matchResults}
+            />
+          </div>
+        )}
+        
+        <div className={`mt-6 transition-opacity duration-300 ${animatingOut ? 'opacity-0' : 'opacity-100'}`}>
           {currentView === 1 && (
             <div className="slide-up">
               <JobDescriptionForm onSubmit={handleJdSubmit} isLoading={loading} savedData={jdResults} />
@@ -240,34 +231,42 @@ function App() {
             </div>
           )}
           
-          {/* Step 2: Resume Upload */}
           {currentView === 2 && (
             <div className="slide-up">
               <ResumeUploader onUpload={handleResumeUpload} isLoading={loading} />
               {resumeResults.length > 0 && (
-                <div className="mt-6 bg-white p-4 rounded-lg shadow-sm scale-in">
-                  <h2 className="text-xl font-semibold mb-2">Processed Resumes</h2>
-                  <p className="text-gray-700">
-                    Successfully processed {resumeResults.length} resumes. You can now proceed to matching.
-                  </p>
+                <div className="mt-6 bg-white p-5 rounded-lg shadow-sm scale-in">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-1">Resume Processing Complete</h2>
+                      <p className="text-gray-600">
+                        {resumeResults.length} {resumeResults.length === 1 ? 'resume' : 'resumes'} successfully processed
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setActiveStep(3)}
+                      className="btn-primary btn"
+                    >
+                      Continue to Matching
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           )}
           
-          {/* Step 3: Matching */}
           {currentView === 3 && (
             <div className="slide-up">
-              <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                <h2 className="text-xl font-semibold mb-4">Resume Matching</h2>
-                <p className="mb-4 text-gray-700">
-                  {matchResults ? 'Match results are shown below.' : 'Click the button below to match the job description with the uploaded resumes.'}
-                </p>
-                {!matchResults && (
+              {!matchResults ? (
+                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                  <h2 className="text-xl font-semibold mb-3">Resume Matching</h2>
+                  <p className="mb-4 text-gray-600">
+                    Our AI agents will analyze each resume and match it against the job requirements.
+                  </p>
                   <button 
                     onClick={handleMatching}
                     disabled={loading}
-                    className={`btn ${loading ? 'bg-gray-400' : 'btn-primary'} w-full relative overflow-hidden`}
+                    className={`btn ${loading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'btn-primary'} w-full max-w-md mx-auto block`}
                   >
                     {loading ? (
                       <span className="flex items-center justify-center">
@@ -276,12 +275,10 @@ function App() {
                         <span className="inline-flex h-2 w-2 bg-white rounded-full mr-1 opacity-75 animate-ping" style={{ animationDelay: '0.2s' }}></span>
                         <span className="inline-flex h-2 w-2 bg-white rounded-full opacity-75 animate-ping" style={{ animationDelay: '0.4s' }}></span>
                       </span>
-                    ) : 'Match Resumes'}
+                    ) : 'Start Matching Process'}
                   </button>
-                )}
-              </div>
-              
-              {matchResults && (
+                </div>
+              ) : (
                 <div className="scale-in">
                   <MatchingResults results={matchResults} />
                 </div>
@@ -290,16 +287,16 @@ function App() {
           )}
         </div>
         
-        <div className="mt-8 text-center fade-in">
+        <div className="mt-8 flex justify-center">
           <button 
             onClick={resetWorkflow}
-            className="btn bg-gray-700 text-white hover:bg-gray-800 px-6"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
           >
-            Reset Workflow
+            <FiRefreshCw className="h-4 w-4" />
+            <span>Reset Session</span>
           </button>
         </div>
         
-        {/* Custom Email Form */}
         <CustomEmailForm 
           isOpen={customEmailModalOpen}
           onClose={() => setCustomEmailModalOpen(false)}
@@ -307,8 +304,8 @@ function App() {
       </div>
       
       <footer className="bg-white border-t border-gray-200 py-4 mt-8">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-          Recruitly &copy; {new Date().getFullYear()} | AI-Powered Job Application Screening System
+        <div className="container mx-auto px-4 text-center text-gray-500 text-sm max-w-6xl">
+          <span className="font-medium text-gray-700">RecruitAI</span> &copy; {new Date().getFullYear()} | AI-Powered Recruitment Platform
         </div>
       </footer>
     </div>

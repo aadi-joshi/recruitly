@@ -14,7 +14,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
   
   const handleSendEmail = async () => {
     if (!recipientEmail.trim() || !subject.trim() || !body.trim()) {
-      toast.error('Please complete all fields');
+      toast.error('Please complete all required fields');
       return;
     }
     
@@ -57,25 +57,25 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden scale-in">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl overflow-hidden scale-in">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center">
-            <div className="bg-primary-50 p-2 rounded-full mr-3">
-              <FiMail className="text-primary-600 h-5 w-5" />
+            <div className="bg-indigo-50 p-2 rounded-lg mr-3">
+              <FiMail className="text-indigo-600 h-5 w-5" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              Send Custom Email
+            <h3 className="text-lg font-medium text-gray-800">
+              Send Email
             </h3>
           </div>
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <FiX className="h-5 w-5" />
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-5">
           <div className="mb-4">
             <label htmlFor="recipient-name" className="block text-sm font-medium text-gray-700 mb-1">
               Recipient Name:
@@ -87,7 +87,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
               <input
                 type="text"
                 id="recipient-name"
-                className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
+                className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
                 placeholder="Enter recipient name (optional)"
@@ -106,7 +106,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
               <input
                 type="email"
                 id="recipient-email"
-                className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
+                className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder="Enter recipient email"
@@ -122,7 +122,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
             <input
               type="text"
               id="email-subject"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Enter email subject"
@@ -136,7 +136,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
             </label>
             <textarea
               id="email-body"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent min-h-[200px]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 min-h-[200px]"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Enter your message here..."
@@ -148,7 +148,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Cancel
             </button>
@@ -156,7 +156,7 @@ const CustomEmailForm = ({ isOpen, onClose }) => {
               type="button"
               onClick={handleSendEmail}
               disabled={isSending}
-              className={`btn btn-primary flex items-center ${isSending ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
             >
               {isSending ? (
                 <>

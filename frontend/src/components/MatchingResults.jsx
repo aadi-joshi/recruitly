@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiChevronUp, FiCheck, FiX, FiUser, FiBarChart2, FiFile, FiMail } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiChevronDown, FiChevronUp, FiCheck, FiX, FiUser, FiBarChart2, FiFile, FiMail, FiCalendar } from 'react-icons/fi';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import EmailModal from './EmailModal';
+import InterviewScheduler from './InterviewScheduler';
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -12,17 +13,19 @@ const MatchingResults = ({ results }) => {
   const [chartData, setChartData] = useState({});
   const [animatedMatches, setAnimatedMatches] = useState([]);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [interviewModalOpen, setInterviewModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const lastResultsRef = useRef(null);
   
   useEffect(() => {
-    if (results && results.matches) {
-      // Clear existing matches first to prevent duplication
+    // Only act if results have changed
+    if (results && results.matches && results !== lastResultsRef.current) {
+      lastResultsRef.current = results;
       setAnimatedMatches([]);
-      
+
       // Animate matches appearing one by one
-      const matches = [...results.matches].sort((a, b) => b.score - a.score);
-      
-      matches.forEach((match, index) => {
+      const sortedMatches = [...results.matches].sort((a, b) => b.score - a.score);
+      sortedMatches.forEach((match, index) => {
         setTimeout(() => {
           setAnimatedMatches(prev => [...prev, match]);
         }, 150 * index);
@@ -42,14 +45,19 @@ const MatchingResults = ({ results }) => {
     setEmailModalOpen(true);
   };
   
+  const handleScheduleInterview = (candidate) => {
+    setSelectedCandidate(candidate);
+    setInterviewModalOpen(true);
+  };
+  
   if (!results || !results.matches || results.matches.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm scale-in">
+      <div className="bg-white p-5 rounded-lg shadow-sm scale-in">
         <div className="flex items-center mb-4">
-          <div className="bg-gray-100 p-2 rounded-full mr-3">
+          <div className="bg-gray-100 p-2 rounded-lg mr-3">
             <FiBarChart2 className="text-gray-500 h-5 w-5" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-800">Matching Results</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Matching Results</h2>
         </div>
         <p className="text-gray-700">No matches found. Try uploading different resumes.</p>
       </div>
@@ -160,20 +168,19 @@ const MatchingResults = ({ results }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm slide-up">
+    <div className="bg-white p-5 rounded-lg shadow-sm slide-up">
       <div className="flex items-center mb-4">
-        <div className="bg-primary-50 p-2 rounded-full mr-3">
-          <FiBarChart2 className="text-primary-600 h-5 w-5" />
+        <div className="bg-indigo-50 p-2 rounded-lg mr-3">
+          <FiBarChart2 className="text-indigo-600 h-5 w-5" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Matching Results</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Candidate Matching Results</h2>
       </div>
       
-      <div className="mb-6 p-5 bg-gray-50 rounded-lg border border-gray-100 scale-in">
-        <h3 className="text-md font-medium text-gray-700 mb-3">Results Summary</h3>
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-gray-600">Total Resumes: <span className="font-semibold">{totalCount}</span></p>
-            <p className="text-gray-600">Matched Candidates: <span className="font-semibold text-green-600">{matchedCount}</span></p>
+            <p className="text-gray-600">Qualified Candidates: <span className="font-semibold text-green-600">{matchedCount}</span></p>
           </div>
           <div className="text-center">
             <div className="relative">
@@ -191,7 +198,7 @@ const MatchingResults = ({ results }) => {
                   cy="40" 
                   r="36" 
                   fill="none" 
-                  stroke="#4f5cf9" 
+                  stroke="#4f46e5" 
                   strokeWidth="8"
                   strokeDasharray={`${matchedCount / totalCount * 226} 226`}
                   strokeDashoffset="0"
@@ -201,7 +208,7 @@ const MatchingResults = ({ results }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-2xl font-bold text-primary-600">
+                <div className="text-2xl font-bold text-indigo-600">
                   {Math.round((matchedCount / totalCount) * 100)}%
                 </div>
               </div>
@@ -211,9 +218,9 @@ const MatchingResults = ({ results }) => {
         </div>
       </div>
       
-      <h3 className="text-lg font-medium mb-3 flex items-center">
+      <h3 className="text-base font-medium mb-3 flex items-center">
         <FiUser className="mr-2 text-gray-500" />
-        <span>Candidate Results</span>
+        <span>Candidates</span>
       </h3>
       <div className="space-y-3">
         {animatedMatches.map((match, index) => (
@@ -221,11 +228,11 @@ const MatchingResults = ({ results }) => {
             key={index} 
             className={`border rounded-lg overflow-hidden transition-all duration-300 stagger-item
               ${match.isMatch 
-                ? 'border-green-200 bg-green-50 hover:shadow' 
-                : 'border-gray-200 bg-gray-50 hover:shadow'}`}
+                ? 'border-green-200 bg-green-50 hover:shadow-sm' 
+                : 'border-gray-200 bg-gray-50 hover:shadow-sm'}`}
           >
             <div 
-              className="flex items-center justify-between p-4 cursor-pointer transition-all hover:bg-opacity-80"
+              className="flex items-center justify-between p-4 cursor-pointer transition-all hover:bg-opacity-90"
               onClick={() => toggleExpand(index)}
             >
               <div className="flex items-center overflow-hidden">
@@ -237,29 +244,48 @@ const MatchingResults = ({ results }) => {
                     <FiX className="text-white h-4 w-4" />
                   )}
                 </div>
-                <div className="overflow-hidden flex items-center">
+                <div className="overflow-hidden">
                   <h4 className="font-medium text-gray-800 truncate">
                     {match.name}
                   </h4>
                   
-                  {/* Email button */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEmailCandidate(match);
-                    }}
-                    className="ml-2 p-1.5 text-primary-600 hover:bg-primary-50 rounded-full transition-colors"
-                    title="Email Candidate"
-                  >
-                    <FiMail size={16} />
-                  </button>
-                  
-                  {match.filename && (
-                    <div className="flex items-center text-xs text-gray-500 ml-3">
-                      <FiFile className="mr-1 h-3 w-3" />
-                      <span className="truncate">{match.filename}</span>
+                  <div className="flex items-center mt-1">
+                    {/* Action buttons */}
+                    <div className="flex mr-3">
+                      {/* Email button */}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEmailCandidate(match);
+                        }}
+                        className="mr-2 text-indigo-600 hover:text-indigo-800 transition-colors"
+                        title="Email Candidate"
+                      >
+                        <FiMail size={15} />
+                      </button>
+                      
+                      {/* Interview scheduling button - only for matched candidates */}
+                      {match.isMatch && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScheduleInterview(match);
+                          }}
+                          className="text-green-600 hover:text-green-800 transition-colors"
+                          title="Schedule Interview"
+                        >
+                          <FiCalendar size={15} />
+                        </button>
+                      )}
                     </div>
-                  )}
+                    
+                    {match.filename && (
+                      <div className="flex items-center text-xs text-gray-500">
+                        <FiFile className="mr-1 h-3 w-3" />
+                        <span className="truncate max-w-[150px]">{match.filename}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -269,9 +295,6 @@ const MatchingResults = ({ results }) => {
                     <div className={`font-bold text-lg transition-all
                       ${match.isMatch ? 'text-green-600' : 'text-gray-600'}`}>
                       {Math.round(match.score * 100)}%
-                    </div>
-                    <div className="absolute top-full right-0 mt-1 w-24 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      Match score
                     </div>
                   </div>
                 </div>
@@ -307,7 +330,7 @@ const MatchingResults = ({ results }) => {
                   </ul>
                 </div>
                 
-                <div className="h-60 mt-6 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="h-60 mt-4 p-2 bg-gray-50 rounded-lg border border-gray-100">
                   <Bar 
                     data={chartData} 
                     options={chartOptions}
@@ -326,6 +349,18 @@ const MatchingResults = ({ results }) => {
         candidateName={selectedCandidate?.name || ''}
         candidateEmail={`${selectedCandidate?.name?.toLowerCase().replace(/\s+/g, '.')}@example.com`}
       />
+      
+      {/* Interview Scheduler Modal */}
+      {interviewModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl scale-in">
+            <InterviewScheduler 
+              candidate={selectedCandidate} 
+              onClose={() => setInterviewModalOpen(false)} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

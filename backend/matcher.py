@@ -3,8 +3,8 @@ import numpy as np
 
 # Weights for each aligned JD section
 weights = {
-    "responsibilities": 0.5,
-    "qualifications": 0.5
+    "responsibilities": 0.6,
+    "qualifications": 0.6
 }
 
 # Function to compute cosine similarity with fallback

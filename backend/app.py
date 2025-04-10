@@ -16,6 +16,7 @@ from jd_embedding_utils import generate_jd_embedding, extract_sections
 from resume_embedding_utils import pdf_to_text, extract_resume_sections, generate_resume_embedding
 from matcher import calculate_match_score, match_all_resumes
 from email_utils import send_email
+from agent_framework import AgentCoordinator
 
 app = FastAPI()
 
@@ -42,6 +43,11 @@ class EmailRequest(BaseModel):
     subject: str
     body: str
 
+class ScheduleRequest(BaseModel):
+    candidate_id: str
+    name: str
+    email: str
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -51,7 +57,8 @@ class NumpyEncoder(json.JSONEncoder):
 # Store processed JD and resumes in memory for matching
 current_session = {
     "jd": None,
-    "resumes": {}
+    "resumes": {},
+    "agent_coordinator": AgentCoordinator()
 }
 
 # Create a single model instance for reuse
@@ -60,26 +67,25 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 @app.post("/embed")
 def get_embedding(request: JDRequest):
     """Process a job description and generate its embedding"""
-    title, embedding = generate_jd_embedding(request.text)
-    sections = extract_sections(request.text)
+    coordinator = current_session["agent_coordinator"]
+    result = coordinator.process_job_description(request.text)
     
     # Store in current session
-    current_session["jd"] = {
-        "title": title,
-        "embedding": embedding,
-        "sections": sections
-    }
+    current_session["jd"] = result
     
     # Convert embedding dictionary properly for JSON response
     serializable_embedding = json.loads(
-        json.dumps(embedding, cls=NumpyEncoder)
+        json.dumps(result["embedding"], cls=NumpyEncoder)
     )
     
-    return {
-        "title": title,
+    response_data = {
+        "title": result["title"],
         "embedding": serializable_embedding,
-        "sections": sections
+        "sections": result["sections"],
+        "summary": result.get("summary", "")
     }
+    
+    return response_data
 
 @app.post("/upload-resumes")
 async def upload_resumes(files: List[UploadFile] = File(...)):
@@ -128,35 +134,9 @@ async def upload_resumes(files: List[UploadFile] = File(...)):
 async def process_resume(filename, file_path):
     """Process a single resume PDF file"""
     try:
-        # Extract text from PDF
-        text = pdf_to_text(file_path)
-        
-        # Parse resume sections
-        parsed_sections = extract_resume_sections(text)
-        
-        # Generate section-specific embeddings for matching
-        section_embeddings = {
-            "experience": None,
-            "education": None, 
-            "skills": None,
-            "projects": None,
-            "certifications": None
-        }
-        
-        # Generate embeddings for each section if available
-        for section in section_embeddings.keys():
-            if section in parsed_sections and parsed_sections[section]:
-                section_text = " ".join(parsed_sections[section])
-                if section_text.strip():
-                    # Use the global model instance
-                    section_embeddings[section] = model.encode(section_text, convert_to_numpy=True)
-        
-        # Return results for this resume
-        return filename, {
-            "parsed": parsed_sections,
-            "embedding": section_embeddings,
-            "text": text
-        }
+        coordinator = current_session["agent_coordinator"]
+        result = coordinator.cv_agent.process_cv(file_path, filename)
+        return filename, result
                 
     except Exception as e:
         print(f"Error processing {filename}: {str(e)}")
@@ -171,33 +151,51 @@ def match_resumes():
     if not current_session["resumes"]:
         raise HTTPException(status_code=400, detail="No resumes processed yet")
     
-    jd_title = current_session["jd"].get("title", "Unknown Position")
-    jd_embeddings = current_session["jd"].get("embedding", {})
+    coordinator = current_session["agent_coordinator"]
+    match_results = coordinator.match_candidates(
+        current_session["jd"],
+        current_session["resumes"]
+    )
     
-    # Match each resume against the JD
-    matches = []
-    for filename, resume_data in current_session["resumes"].items():
-        parsed = resume_data["parsed"]
-        embedding = resume_data.get("embedding", {})
-        
-        # Extract name from parsed resume or use filename
-        name = _extract_name(parsed, filename)
-        
-        # Use the matcher module's calculate_match_score function with the correct parameters
-        score, reasoning = calculate_match_score(jd_embeddings, embedding)
-        
-        matches.append({
-            "name": name,
-            "filename": filename,
-            "score": score,
-            "reasoning": reasoning,
-            "isMatch": score >= 0.4  # Threshold for matching
-        })
+    return match_results
+
+@app.post("/generate-interview-slots")
+def generate_interview_slots():
+    """Generate potential interview time slots"""
+    if not current_session["agent_coordinator"]:
+        raise HTTPException(status_code=400, detail="Agent coordinator not initialized")
     
-    # Sort matches by score in descending order
-    matches.sort(key=lambda x: x["score"], reverse=True)
+    slots = current_session["agent_coordinator"].scheduler_agent.generate_interview_slots()
     
-    return {"matches": matches}
+    return {"slots": slots}
+
+@app.post("/prepare-interview-email/{candidate_id}")
+def prepare_interview_email(candidate_id: str):
+    """Prepare an interview email for a specific candidate"""
+    if not current_session["jd"]:
+        raise HTTPException(status_code=400, detail="No job description processed")
+    
+    # Find the candidate in the matches
+    matched_candidates = []
+    if "matches" in current_session:
+        matched_candidates = current_session["matches"]["matches"]
+    
+    candidate = None
+    for match in matched_candidates:
+        if match["name"] == candidate_id or str(match.get("id", "")) == candidate_id:
+            candidate = match
+            break
+    
+    if not candidate:
+        raise HTTPException(status_code=404, detail=f"Candidate {candidate_id} not found")
+    
+    # Generate email content
+    email_data = current_session["agent_coordinator"].scheduler_agent.prepare_email_for_candidate(
+        candidate,
+        current_session["jd"]["title"]
+    )
+    
+    return email_data
 
 @app.post("/send-email")
 def send_candidate_email(request: EmailRequest):
@@ -215,6 +213,14 @@ def send_candidate_email(request: EmailRequest):
             raise HTTPException(status_code=500, detail=result["message"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/suggest-interview-times/{candidate_id}")
+def suggest_interview_times(candidate_id: str):
+    """Suggest available interview time slots for a candidate"""
+    coordinator = current_session["agent_coordinator"]
+    slots = coordinator.scheduler_agent.generate_interview_slots(days_ahead=7, slots_per_day=3)
+    
+    return {"candidate_id": candidate_id, "slots": slots}
 
 # Helper function to extract name from parsed resume
 def _extract_name(parsed, fallback):

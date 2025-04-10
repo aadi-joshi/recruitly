@@ -9,32 +9,28 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  @apply bg-gray-50;
+  @apply bg-slate-50;
 }
 
 @layer components {
   .btn {
-    @apply px-4 py-2 font-semibold rounded-lg shadow-sm transition-all duration-200 transform;
+    @apply px-4 py-2 font-medium rounded-lg shadow-sm transition-all duration-200;
   }
   
   .btn:hover {
-    @apply translate-y-[-1px] shadow-md;
+    @apply shadow-md;
   }
   
   .btn:active {
-    @apply translate-y-[0px] shadow-sm;
+    @apply shadow-sm;
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700;
+    @apply bg-indigo-600 text-white hover:bg-indigo-700;
   }
   
   .card {
-    @apply bg-white p-6 rounded-lg shadow-sm transition-all duration-300;
-  }
-
-  .card-hover {
-    @apply hover:shadow-md hover:translate-y-[-2px];
+    @apply bg-white p-5 rounded-lg shadow-sm transition-all duration-300;
   }
   
   /* Animation classes */
@@ -48,18 +44,6 @@ body {
   
   .scale-in {
     animation: scaleIn 0.3s ease-out;
-  }
-  
-  /* Page transition */
-  .page-transition-enter {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  
-  .page-transition-enter-active {
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 300ms, transform 300ms;
   }
 }
 
