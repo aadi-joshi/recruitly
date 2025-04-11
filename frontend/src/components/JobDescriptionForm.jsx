@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FiFileText, FiSearch, FiArrowRight } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
+  const navigate = useNavigate();
   const [jobDescription, setJobDescription] = useState(() => {
     // Check if there's a saved job description in localStorage
     const savedJobDesc = localStorage.getItem('jobDescriptionText');
@@ -102,7 +104,7 @@ const JobDescriptionForm = ({ onSubmit, isLoading, savedData }) => {
             {savedData && (
               <button
                 type="button"
-                onClick={() => window.location.href = "#step2"}
+                onClick={() => navigate('/resume-upload')}
                 className="btn flex items-center gap-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
               >
                 <span>Continue</span>

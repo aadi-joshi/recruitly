@@ -1,115 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
-import JobDescriptionForm from './components/JobDescriptionForm';
-import ResumeUploader from './components/ResumeUploader';
-import ResultsDisplay from './components/ResultsDisplay';
-import MatchingResults from './components/MatchingResults';
-import WorkflowSteps from './components/WorkflowSteps';
-import CustomEmailForm from './components/CustomEmailForm';
-import DashboardOverview from './components/DashboardOverview';
-import { ToastContainer, toast } from 'react-toastify';
-import axios from 'axios';
-import { FiMail, FiRefreshCw } from 'react-icons/fi';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import NavigationLinks from "./components/NavigationLinks";
+import JobDescriptionPage from "./pages/JobDescriptionPage";
+import ResumeUploadPage from "./pages/ResumeUploadPage";
+import CandidateMatchingPage from "./pages/CandidateMatchingPage";
+import DashboardOverview from "./components/DashboardOverview";
+import { ToastContainer, toast } from "react-toastify";
+import axios from "axios";
+import { FiRefreshCw } from "react-icons/fi";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
-  const [activeStep, setActiveStep] = useState(() => {
-    const savedStep = localStorage.getItem('activeStep');
-    return savedStep ? parseInt(savedStep, 10) : 1;
-  });
-
   const [loading, setLoading] = useState(false);
 
   const [jdResults, setJdResults] = useState(() => {
-    const savedResults = localStorage.getItem('jdResults');
+    const savedResults = localStorage.getItem("jdResults");
     return savedResults ? JSON.parse(savedResults) : null;
   });
 
   const [resumeResults, setResumeResults] = useState(() => {
-    const savedResults = localStorage.getItem('resumeResults');
+    const savedResults = localStorage.getItem("resumeResults");
     return savedResults ? JSON.parse(savedResults) : [];
   });
 
   const [matchResults, setMatchResults] = useState(() => {
-    const savedResults = localStorage.getItem('matchResults');
+    const savedResults = localStorage.getItem("matchResults");
     return savedResults ? JSON.parse(savedResults) : null;
   });
 
-  const [animatingOut, setAnimatingOut] = useState(false);
-  const [currentView, setCurrentView] = useState(() => {
-    const savedStep = localStorage.getItem('activeStep');
-    return savedStep ? parseInt(savedStep, 10) : 1;
-  });
-
-  const [customEmailModalOpen, setCustomEmailModalOpen] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('activeStep', activeStep.toString());
-  }, [activeStep]);
-
   useEffect(() => {
     if (jdResults) {
-      localStorage.setItem('jdResults', JSON.stringify(jdResults));
+      localStorage.setItem("jdResults", JSON.stringify(jdResults));
     }
   }, [jdResults]);
 
   useEffect(() => {
     if (resumeResults.length > 0) {
-      localStorage.setItem('resumeResults', JSON.stringify(resumeResults));
+      localStorage.setItem("resumeResults", JSON.stringify(resumeResults));
     }
   }, [resumeResults]);
 
   useEffect(() => {
     if (matchResults) {
-      localStorage.setItem('matchResults', JSON.stringify(matchResults));
+      localStorage.setItem("matchResults", JSON.stringify(matchResults));
     }
   }, [matchResults]);
 
-  useEffect(() => {
-    if (activeStep !== currentView) {
-      setAnimatingOut(true);
-      const timeout = setTimeout(() => {
-        setCurrentView(activeStep);
-        setAnimatingOut(false);
-      }, 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [activeStep, currentView]);
+  const notifySuccess = (message) =>
+    toast.success(message, {
+      position: "top-right",
+      autoClose: 3000,
+      className: "toast-success",
+    });
 
-  const notifySuccess = (message) => toast.success(message, {
-    position: "top-right",
-    autoClose: 3000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    progress: undefined,
-    className: "toast-success",
-  });
-
-  const notifyError = (message) => toast.error(message, {
-    position: "top-right",
-    autoClose: 4000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-    progress: undefined,
-    className: "toast-error",
-  });
+  const notifyError = (message) =>
+    toast.error(message, {
+      position: "top-right",
+      autoClose: 4000,
+      className: "toast-error",
+    });
 
   const handleJdSubmit = async (jobDescription) => {
     setLoading(true);
     try {
-      const response = await axios.post('/api/embed', {
-        text: jobDescription
+      const response = await axios.post("/api/embed", {
+        text: jobDescription,
       });
       setJdResults(response.data);
-      notifySuccess('Job description successfully analyzed!');
-      setActiveStep(2);
+      notifySuccess("Job description successfully analyzed!");
     } catch (error) {
-      console.error('Error analyzing job description:', error);
-      notifyError('Error analyzing job description. Please check if the backend server is running.');
+      console.error("Error analyzing job description:", error);
+      notifyError("Error analyzing job description. Please check backend.");
     } finally {
       setLoading(false);
     }
@@ -117,34 +79,25 @@ function App() {
 
   const handleResumeUpload = async (files) => {
     if (files.length === 0) return;
-
     setLoading(true);
-
     const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
+    files.forEach((file) => {
+      formData.append("files", file);
     });
-
     try {
-      const response = await axios.post('/api/upload-resumes', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await axios.post("/api/upload-resumes", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       const results = response.data;
-      const processedResumes = Object.keys(results).map(filename => ({
+      const processedResumes = Object.keys(results).map((filename) => ({
         name: filename,
-        ...results[filename]
+        ...results[filename],
       }));
-
       setResumeResults(processedResumes);
       notifySuccess(`Successfully processed ${processedResumes.length} resumes!`);
-      setActiveStep(3);
-
     } catch (error) {
-      console.error('Error processing resumes:', error);
-      notifyError('Error processing resumes. Please check if files are valid PDFs.');
+      console.error("Error processing resumes:", error);
+      notifyError("Error processing resumes. Check if files are valid PDFs.");
     } finally {
       setLoading(false);
     }
@@ -152,20 +105,17 @@ function App() {
 
   const handleMatching = async () => {
     if (!jdResults || resumeResults.length === 0) {
-      toast.warning('Please complete both job description analysis and resume upload first.');
+      toast.warning("Please complete both job description analysis and resume upload first.");
       return;
     }
-
     setLoading(true);
-
     try {
-      const response = await axios.post('/api/match');
-      setMatchResults(response.data); // Ensure matchResults is updated
-      notifySuccess('Matching completed successfully!');
-      setActiveStep(3);
+      const response = await axios.post("/api/match");
+      setMatchResults(response.data); // Update matchResults
+      notifySuccess("Matching completed successfully!");
     } catch (error) {
-      console.error('Error during matching:', error);
-      notifyError('Error during matching process. Please try again.');
+      console.error("Error during matching:", error);
+      notifyError("Error during matching. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -173,133 +123,70 @@ function App() {
 
   const resetWorkflow = async () => {
     try {
-      await axios.get('/api/clear-session');
+      await axios.get("/api/clear-session");
       setJdResults(null);
       setResumeResults([]);
       setMatchResults(null);
-      setActiveStep(1);
-
-      localStorage.removeItem('jdResults');
-      localStorage.removeItem('resumeResults');
-      localStorage.removeItem('matchResults');
-      localStorage.removeItem('activeStep');
-
-      toast.info('Workflow reset. You can start a new session.');
+      localStorage.removeItem("jdResults");
+      localStorage.removeItem("resumeResults");
+      localStorage.removeItem("matchResults");
+      toast.info("Workflow reset. You can start a new session.");
     } catch (error) {
-      console.error('Error resetting workflow:', error);
-      notifyError('Error resetting workflow.');
+      console.error("Error resetting workflow:", error);
+      notifyError("Error resetting workflow.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <ToastContainer 
-        position="top-right"
-        autoClose={3000}
-        limit={3}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="light"
-      />
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-6 flex-grow max-w-6xl">
-        <WorkflowSteps activeStep={activeStep} setActiveStep={setActiveStep} />
-        
-        {(jdResults || resumeResults.length > 0 || matchResults) && (
-          <div className="mt-6">
-            <DashboardOverview 
-              jdResults={jdResults} 
-              resumeResults={resumeResults}
-              matchResults={matchResults}
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <ToastContainer position="top-right" autoClose={3000} limit={3} />
+        <Navbar />
+        <div className="container mx-auto px-4 py-6 flex-grow max-w-6xl">
+          <NavigationLinks />
+          { (jdResults || resumeResults.length > 0 || matchResults) && (
+            <div className="mt-6">
+              <DashboardOverview jdResults={jdResults} resumeResults={resumeResults} matchResults={matchResults} />
+            </div>
+          )}
+          <Routes>
+            <Route
+              path="/job-description"
+              element={
+                <JobDescriptionPage onSubmit={handleJdSubmit} isLoading={loading} jdResults={jdResults} />
+              }
             />
+            <Route
+              path="/resume-upload"
+              element={
+                <ResumeUploadPage onUpload={handleResumeUpload} isLoading={loading} resumeResults={resumeResults} />
+              }
+            />
+            <Route
+              path="/candidate-matching"
+              element={
+                <CandidateMatchingPage matchResults={matchResults} handleMatching={handleMatching} isLoading={loading} />
+              }
+            />
+            <Route path="*" element={<Navigate to="/job-description" replace />} />
+          </Routes>
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={resetWorkflow}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
+            >
+              <FiRefreshCw className="h-4 w-4" />
+              <span>Reset Session</span>
+            </button>
           </div>
-        )}
-        
-        <div className={`mt-6 transition-opacity duration-300 ${animatingOut ? 'opacity-0' : 'opacity-100'}`}>
-          {currentView === 1 && (
-            <div className="slide-up">
-              <JobDescriptionForm onSubmit={handleJdSubmit} isLoading={loading} savedData={jdResults} />
-              {jdResults && (
-                <div className="mt-6 scale-in">
-                  <ResultsDisplay results={jdResults} />
-                </div>
-              )}
-            </div>
-          )}
-          
-          {currentView === 2 && (
-            <div className="slide-up">
-              <ResumeUploader onUpload={handleResumeUpload} isLoading={loading} />
-              {resumeResults.length > 0 && (
-                <div className="mt-6 bg-white p-5 rounded-lg shadow-sm scale-in">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-1">Resume Processing Complete</h2>
-                      <p className="text-gray-600">
-                        {resumeResults.length} {resumeResults.length === 1 ? 'resume' : 'resumes'} successfully processed
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setActiveStep(3)}
-                      className="btn-primary btn"
-                    >
-                      Continue to Matching
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {currentView === 3 && (
-            <div className="slide-up">
-              {matchResults ? (
-                <div className="scale-in">
-                  <MatchingResults results={matchResults} /> {/* Pass updated matchResults */}
-                </div>
-              ) : (
-                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-                  <h2 className="text-xl font-semibold mb-3">Resume Matching</h2>
-                  <p className="mb-4 text-gray-600">
-                    Our AI agents will analyze each resume and match it against the job requirements.
-                  </p>
-                  <button 
-                    onClick={handleMatching}
-                    disabled={loading}
-                    className={`btn ${loading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'btn-primary'} w-full max-w-md mx-auto block`}
-                  >
-                    {loading ? 'Processing...' : 'Start Matching Process'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-        
-        <div className="mt-8 flex justify-center">
-          <button 
-            onClick={resetWorkflow}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
-          >
-            <FiRefreshCw className="h-4 w-4" />
-            <span>Reset Session</span>
-          </button>
-        </div>
-        
-        <CustomEmailForm 
-          isOpen={customEmailModalOpen}
-          onClose={() => setCustomEmailModalOpen(false)}
-        />
+        <footer className="bg-white border-t border-gray-200 py-4 mt-8">
+          <div className="container mx-auto px-4 text-center text-gray-500 text-sm max-w-6xl">
+            <span className="font-medium text-gray-700">Recruitly</span> &copy; {new Date().getFullYear()} | AI-Powered Recruitment
+          </div>
+        </footer>
       </div>
-      
-      <footer className="bg-white border-t border-gray-200 py-4 mt-8">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm max-w-6xl">
-          <span className="font-medium text-gray-700">Recruitly</span> &copy; {new Date().getFullYear()} | AI-Powered Recruitment
-        </div>
-      </footer>
-    </div>
+    </BrowserRouter>
   );
 }
 
