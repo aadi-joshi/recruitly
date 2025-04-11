@@ -1,14 +1,12 @@
-nltk
-sentence-transformers
-spacy
-numpy<2
-pybind11
-torch
-torchvision
-tf-keras
 fastapi
 uvicorn
-python-multipart
+sentence-transformers
+nltk
+spacy
 pdfplumber
+torch  # required by sentence-transformers, keep
+torchvision  # keep only if your code actually uses image processing (optional)
 python-dotenv
+python-multipart
 email-validator
+numpy<2
