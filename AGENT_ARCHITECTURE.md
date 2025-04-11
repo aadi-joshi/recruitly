@@ -1,6 +1,6 @@
-# Multi-Agent Architecture for AI-Powered Job Application Screening
+# Multi-Agent Architecture for Recruitly Job Application Screening
 
-This document outlines the multi-agent architecture implemented in the Resume Match Pro system.
+This document outlines the multi-agent architecture implemented in the Recruitly system.
 
 ## Agent System Overview
 

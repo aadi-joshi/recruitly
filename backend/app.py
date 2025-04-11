@@ -11,6 +11,7 @@ import numpy as np
 from pathlib import Path
 import asyncio
 from sentence_transformers import SentenceTransformer
+import sqlite3
 
 from jd_embedding_utils import generate_jd_embedding, extract_sections
 from resume_embedding_utils import pdf_to_text, extract_resume_sections, generate_resume_embedding
@@ -28,6 +29,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize SQLite database
+def init_db():
+    conn = sqlite3.connect("recruitly.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS job_descriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            embedding TEXT,
+            sections TEXT,
+            summary TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS resumes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT,
+            embedding TEXT,
+            parsed TEXT,
+            summary TEXT
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS matches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resume_id INTEGER,
+            jd_id INTEGER,
+            score REAL,
+            reasoning TEXT,
+            FOREIGN KEY (resume_id) REFERENCES resumes (id),
+            FOREIGN KEY (jd_id) REFERENCES job_descriptions (id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# Call init_db on startup
+init_db()
 
 # Classes for request/response models
 class JDRequest(BaseModel):
@@ -145,19 +185,31 @@ async def process_resume(filename, file_path):
 @app.post("/match")
 def match_resumes():
     """Match the current JD with all processed resumes"""
-    if not current_session["jd"]:
-        raise HTTPException(status_code=400, detail="No job description processed yet")
-    
-    if not current_session["resumes"]:
-        raise HTTPException(status_code=400, detail="No resumes processed yet")
-    
-    coordinator = current_session["agent_coordinator"]
-    match_results = coordinator.match_candidates(
-        current_session["jd"],
-        current_session["resumes"]
-    )
-    
-    return match_results
+    jd = current_session["jd"]
+    resumes = current_session["resumes"]
+
+    if not jd or not resumes:
+        raise HTTPException(status_code=400, detail="Job description or resumes missing")
+
+    jd_title = jd["title"]
+    jd_embeddings = jd["embedding"]
+
+    # Match all resumes
+    all_candidates = match_all_resumes(jd_title, jd_embeddings, resumes, threshold=0.8)
+
+    # Save all candidates to the database
+    conn = sqlite3.connect("recruitly.db")
+    cursor = conn.cursor()
+    for candidate in all_candidates:
+        cursor.execute("""
+            INSERT INTO matches (resume_id, jd_id, score, reasoning)
+            VALUES (?, ?, ?, ?)
+        """, (candidate.get("resume_id"), jd.get("id"), candidate["score"], json.dumps(candidate["reasoning"])))
+    conn.commit()
+    conn.close()
+
+    # Include all candidates in the response
+    return {"candidates": all_candidates}
 
 @app.post("/generate-interview-slots")
 def generate_interview_slots():

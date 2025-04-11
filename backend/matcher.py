@@ -3,8 +3,8 @@ import numpy as np
 
 # Weights for each aligned JD section
 weights = {
-    "responsibilities": 0.6,
-    "qualifications": 0.6
+    "responsibilities": 0.7,
+    "qualifications": 0.7
 }
 
 # Function to compute cosine similarity with fallback
@@ -59,7 +59,7 @@ def _combine_embeddings(embeddings_list):
 
 # Main matcher
 def match_all_resumes(jd_title, jd_embeddings, resume_data, threshold=0.8):
-    matched_candidates = []
+    all_candidates = []
 
     print(f"\n📌 Matching resumes against JD: **{jd_title}**\n")
 
@@ -75,14 +75,15 @@ def match_all_resumes(jd_title, jd_embeddings, resume_data, threshold=0.8):
             print("   •", line)
         print("✅ Shortlisted\n" if score >= threshold else "❌ Not shortlisted\n")
 
-        if score >= threshold:
-            matched_candidates.append({
-                "name": name,
-                "score": score,
-                "reasoning": explanation
-            })
+        all_candidates.append({
+            "name": name,
+            "score": score,
+            "reasoning": explanation,
+            "resume_id": data.get("id"),  # Assuming resume ID is stored in data
+            "is_match": score >= threshold  # Flag for passing the threshold
+        })
 
-    return matched_candidates
+    return all_candidates
 
 # Name extractor fallback
 def _extract_name(parsed, fallback="Unknown"):

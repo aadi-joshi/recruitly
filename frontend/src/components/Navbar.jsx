@@ -11,8 +11,8 @@ const Navbar = () => {
               <FiBriefcase className="h-5 w-5 text-white" />
             </div>
             <h1 className="text-lg md:text-xl font-semibold text-gray-800">
-              <span className="text-indigo-600">Recruit</span>
-              <span className="font-bold">AI</span>
+              {/* <span className="text-indigo-600">Recruitly</span> */}
+              <span className="font-bold">Recruitly</span>
             </h1>
           </div>
           <div>

@@ -1,6 +1,6 @@
 # Job Application Screening Workflow
 
-This document explains the end-to-end workflow of the AI-Powered Job Application Screening System.
+This document explains the end-to-end workflow of the Recruitly Job Application Screening System.
 
 ## Overview
 

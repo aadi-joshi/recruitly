@@ -19,24 +19,17 @@ const MatchingResults = ({ results }) => {
   
   useEffect(() => {
     // Only act if results have changed
-    if (results && results.matches && results !== lastResultsRef.current) {
+    if (results && results.candidates && results !== lastResultsRef.current) {
       lastResultsRef.current = results;
       setAnimatedMatches([]);
 
       // Animate matches appearing one by one
-      const sortedMatches = [...results.matches].sort((a, b) => b.score - a.score);
+      const sortedMatches = [...results.candidates].sort((a, b) => b.score - a.score);
       sortedMatches.forEach((match, index) => {
         setTimeout(() => {
           setAnimatedMatches(prev => [...prev, match]);
         }, 150 * index);
       });
-    }
-  }, [results]);
-  
-  // Debug: Log matches to check for duplicates
-  useEffect(() => {
-    if (results && results.matches) {
-      console.log('Match data:', results.matches);
     }
   }, [results]);
   
@@ -50,7 +43,7 @@ const MatchingResults = ({ results }) => {
     setInterviewModalOpen(true);
   };
   
-  if (!results || !results.matches || results.matches.length === 0) {
+  if (!results || !results.candidates || results.candidates.length === 0) {
     return (
       <div className="bg-white p-5 rounded-lg shadow-sm scale-in">
         <div className="flex items-center mb-4">
@@ -59,14 +52,14 @@ const MatchingResults = ({ results }) => {
           </div>
           <h2 className="text-lg font-semibold text-gray-800">Matching Results</h2>
         </div>
-        <p className="text-gray-700">No matches found. Try uploading different resumes.</p>
+        <p className="text-gray-700">No candidates found. Try uploading different resumes.</p>
       </div>
     );
   }
   
   // Count how many are matched vs not matched
-  const matchedCount = results.matches.filter(m => m.isMatch).length;
-  const totalCount = results.matches.length;
+  const matchedCount = results.candidates.filter(m => m.is_match).length;
+  const totalCount = results.candidates.length;
   
   // Extract reasoning data for chart
   const getChartData = (reasoning) => {
@@ -179,7 +172,7 @@ const MatchingResults = ({ results }) => {
       <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-gray-600">Total Resumes: <span className="font-semibold">{totalCount}</span></p>
+            <p className="text-gray-600">Total Candidates: <span className="font-semibold">{totalCount}</span></p>
             <p className="text-gray-600">Qualified Candidates: <span className="font-semibold text-green-600">{matchedCount}</span></p>
           </div>
           <div className="text-center">
@@ -227,7 +220,7 @@ const MatchingResults = ({ results }) => {
           <div 
             key={index} 
             className={`border rounded-lg overflow-hidden transition-all duration-300 stagger-item
-              ${match.isMatch 
+              ${match.is_match 
                 ? 'border-green-200 bg-green-50 hover:shadow-sm' 
                 : 'border-gray-200 bg-gray-50 hover:shadow-sm'}`}
           >
@@ -237,8 +230,8 @@ const MatchingResults = ({ results }) => {
             >
               <div className="flex items-center overflow-hidden">
                 <div className={`mr-3 p-1.5 rounded-full flex-shrink-0
-                  ${match.isMatch ? 'bg-green-500' : 'bg-gray-400'}`}>
-                  {match.isMatch ? (
+                  ${match.is_match ? 'bg-green-500' : 'bg-gray-400'}`}>
+                  {match.is_match ? (
                     <FiCheck className="text-white h-4 w-4" />
                   ) : (
                     <FiX className="text-white h-4 w-4" />
@@ -265,7 +258,7 @@ const MatchingResults = ({ results }) => {
                       </button>
                       
                       {/* Interview scheduling button - only for matched candidates */}
-                      {match.isMatch && (
+                      {match.is_match && (
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -293,7 +286,7 @@ const MatchingResults = ({ results }) => {
                 <div className="mr-4">
                   <div className="group relative">
                     <div className={`font-bold text-lg transition-all
-                      ${match.isMatch ? 'text-green-600' : 'text-gray-600'}`}>
+                      ${match.is_match ? 'text-green-600' : 'text-gray-600'}`}>
                       {Math.round(match.score * 100)}%
                     </div>
                   </div>

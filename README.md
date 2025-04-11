@@ -1,4 +1,4 @@
-# Resume Match Pro - AI-Powered Job Application Screening System
+# Recruitly - AI-Powered Job Application Screening System
 
 This application provides an end-to-end workflow for matching job descriptions with candidate resumes using natural language processing and semantic similarity techniques.
 
@@ -47,9 +47,9 @@ For more details, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
    pip install -r requirements.txt
    ```
 
-2. Download the spaCy model:
+2. Initialize the SQLite database:
    ```
-   python -m spacy download en_core_web_sm
+   python -c "from app import init_db; init_db()"
    ```
 
 3. Start the backend server:

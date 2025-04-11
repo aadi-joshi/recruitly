@@ -159,11 +159,9 @@ function App() {
     setLoading(true);
 
     try {
-      if (!matchResults) {
-        const response = await axios.post('/api/match');
-        setMatchResults(response.data);
-        notifySuccess('Matching completed successfully!');
-      }
+      const response = await axios.post('/api/match');
+      setMatchResults(response.data); // Ensure matchResults is updated
+      notifySuccess('Matching completed successfully!');
       setActiveStep(3);
     } catch (error) {
       console.error('Error during matching:', error);
@@ -257,7 +255,11 @@ function App() {
           
           {currentView === 3 && (
             <div className="slide-up">
-              {!matchResults ? (
+              {matchResults ? (
+                <div className="scale-in">
+                  <MatchingResults results={matchResults} /> {/* Pass updated matchResults */}
+                </div>
+              ) : (
                 <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
                   <h2 className="text-xl font-semibold mb-3">Resume Matching</h2>
                   <p className="mb-4 text-gray-600">
@@ -268,19 +270,8 @@ function App() {
                     disabled={loading}
                     className={`btn ${loading ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'btn-primary'} w-full max-w-md mx-auto block`}
                   >
-                    {loading ? (
-                      <span className="flex items-center justify-center">
-                        <span className="mr-2">Processing</span>
-                        <span className="inline-flex h-2 w-2 bg-white rounded-full mr-1 opacity-75 animate-ping"></span>
-                        <span className="inline-flex h-2 w-2 bg-white rounded-full mr-1 opacity-75 animate-ping" style={{ animationDelay: '0.2s' }}></span>
-                        <span className="inline-flex h-2 w-2 bg-white rounded-full opacity-75 animate-ping" style={{ animationDelay: '0.4s' }}></span>
-                      </span>
-                    ) : 'Start Matching Process'}
+                    {loading ? 'Processing...' : 'Start Matching Process'}
                   </button>
-                </div>
-              ) : (
-                <div className="scale-in">
-                  <MatchingResults results={matchResults} />
                 </div>
               )}
             </div>
@@ -305,7 +296,7 @@ function App() {
       
       <footer className="bg-white border-t border-gray-200 py-4 mt-8">
         <div className="container mx-auto px-4 text-center text-gray-500 text-sm max-w-6xl">
-          <span className="font-medium text-gray-700">RecruitAI</span> &copy; {new Date().getFullYear()} | AI-Powered Recruitment Platform
+          <span className="font-medium text-gray-700">Recruitly</span> &copy; {new Date().getFullYear()} | AI-Powered Recruitment
         </div>
       </footer>
     </div>
