@@ -101,16 +101,12 @@ current_session = {
     "agent_coordinator": AgentCoordinator()
 }
 
-# ✅ Lazy-loaded model setup
-model = None
+# Create a single model instance for reuse
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 @app.post("/embed")
 def get_embedding(request: JDRequest):
     """Process a job description and generate its embedding"""
-    global model
-    if model is None:
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-
     coordinator = current_session["agent_coordinator"]
     result = coordinator.process_job_description(request.text)
     
@@ -322,3 +318,5 @@ def test_match():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+
