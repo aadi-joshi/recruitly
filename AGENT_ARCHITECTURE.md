@@ -43,7 +43,7 @@ The JD Analyzer Agent specializes in understanding job descriptions:
 
 The CV Analyzer Agent focuses on resume processing:
 - Extracts text from PDF resumes
-- Identifies and parses resume sections (skills, experience, education)
+- Identifies and parses resume sections (skills, experience, education,certifications,tech stack,achievements))
 - Generates embeddings for each section
 - Creates structured representations for matching
 
