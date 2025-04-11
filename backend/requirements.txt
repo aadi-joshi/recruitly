@@ -1,13 +1,14 @@
-fastapi
-uvicorn
-sentence-transformers
 nltk
+sentence-transformers
 spacy
-en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
-pdfplumber
+numpy<2
+pybind11
 torch
 torchvision
-python-dotenv
+tf-keras
+fastapi
+uvicorn
 python-multipart
+pdfplumber
+python-dotenv
 email-validator
-numpy<2
