@@ -1,53 +1,91 @@
 # Recruitly - AI-Powered Job Application Screening System
 
-This application provides an end-to-end workflow for matching job descriptions with candidate resumes using natural language processing and semantic similarity techniques.
+Recruitly is an end-to-end recruitment solution that uses AI to match job descriptions with candidate resumes through natural language processing and semantic similarity techniques. Developed by Advithiya Duddu and Aadi Joshi.
 
-## Features
+## Key Features
 
-- **Job Description Analysis**: Extract key information from job descriptions including skills, experience, and qualifications
-- **Resume Processing**: Upload and parse multiple PDF resumes
-- **AI-Powered Matching**: Match resumes against job descriptions with section-by-section analysis
-- **Detailed Results**: View match scores, reasoning, and visualizations
-- **Interview Scheduling**: Automatically generate interview slots and send invitations to qualified candidates
-- **Multi-Agent System**: Specialized AI agents work together to handle different aspects of the recruitment process
+- **Job Description Analysis**: Extract structured information from job descriptions
+- **Resume Processing**: Parse and analyze multiple PDF resumes
+- **AI-Powered Matching**: Compare resumes against job requirements with semantic matching
+- **Candidate Ranking**: Score and rank candidates based on qualification fit
+- **Interview Scheduling**: Generate interview slots and send email invitations
+- **Multi-Agent System**: Specialized AI agents handle different recruitment tasks
 
-## Project Structure
+## User Flow
 
-- `/backend` - FastAPI server with NLP utilities
-  - `app.py` - Main server with API endpoints
-  - `agent_framework.py` - Multi-agent architecture implementation
-  - `jd_embedding_utils.py` - Job description parsing and embedding
-  - `resume_embedding_utils.py` - Resume parsing and embedding
-  - `matcher.py` - Matching logic with weighted scoring
-  - `email_utils.py` - Email sending utilities
+```mermaid
+flowchart TD
+    A[Start] --> B[Enter Job Description]
+    B --> C[Analyze JD with AI]
+    C --> D[Upload Candidate Resumes]
+    D --> E[Process Resumes with AI]
+    E --> F[Match Resumes to Job Description]
+    F --> G[Review Match Results]
+    G --> H{Qualified Candidates?}
+    H -->|Yes| I[Schedule Interviews]
+    H -->|No| J[Adjust Requirements or Find More Candidates]
+    I --> K[Send Interview Invitations]
+    J --> B
+```
 
-- `/frontend` - React + Vite + Tailwind application
-  - Complete workflow UI with step-by-step process
-  - Interactive components for each stage of the recruitment process
+## System Architecture
 
-## Multi-Agent Architecture
+```mermaid
+flowchart TB
+    User[User Interface] <--> API[FastAPI Backend]
+    
+    subgraph "Multi-Agent System"
+        Coord[Agent Coordinator] --> JDA[JD Analyzer Agent]
+        Coord --> CVA[CV Analyzer Agent]
+        Coord --> MA[Matching Agent]
+        Coord --> SA[Scheduler Agent]
+    end
+    
+    API <--> Coord
+    
+    JDA <--> NLP[NLP Processing]
+    CVA <--> NLP
+    MA <--> NLP
+    
+    NLP --> Embeddings[Sentence Embeddings]
+    
+    subgraph "Data Storage"
+        DB[(SQLite Database)]
+    end
+    
+    API <--> DB
+```
 
-The system uses a coordinated multi-agent approach:
+## Tech Stack
 
-1. **JD Analyzer Agent**: Processes and extracts information from job descriptions
-2. **CV Analyzer Agent**: Processes and extracts information from resumes
-3. **Matching Agent**: Compares job descriptions with resumes to find qualified candidates
-4. **Scheduler Agent**: Handles interview scheduling for qualified candidates
-5. **Agent Coordinator**: Orchestrates the workflow between all specialized agents
+- **Backend**
+  - FastAPI (API framework)
+  - NLTK & spaCy (Natural Language Processing)
+  - Sentence Transformers (Semantic text embeddings)
+  - SQLite (Database)
 
-For more details, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
+- **Frontend**
+  - React (UI library)
+  - Vite (Build tool)
+  - Tailwind CSS (Styling)
+  - Chart.js (Data visualization)
+  - PDF.js (PDF processing)
 
-## Setup Instructions
+- **Data Processing**
+  - pdfplumber (Text extraction)
+  - Cosine similarity (Matching algorithm)
+
+## Installation and Setup
 
 ### Backend Setup
 
-1. Install the required dependencies:
+1. Install dependencies:
    ```
    cd backend
    pip install -r requirements.txt
    ```
 
-2. Initialize the SQLite database:
+2. Initialize the database:
    ```
    python -c "from app import init_db; init_db()"
    ```
@@ -65,88 +103,73 @@ For more details, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
    cd frontend
    ```
 
-2. Install the frontend dependencies:
+2. Install dependencies:
    ```
    npm install
    ```
 
-3. If you encounter missing dependency errors, install them explicitly:
-   ```
-   npm install react-toastify chart.js react-chartjs-2
-   ```
-
-4. Start the development server:
+3. Start the development server:
    ```
    npm run dev
    ```
-   The React application will be available at `http://localhost:3000`
+   The application will be available at `http://localhost:3000`
 
-## Usage Workflow
+## Usage Guide
 
 ### Step 1: Job Description Analysis
-1. Paste a job description into the text area
+1. Paste a job description in the text area
 2. Click "Analyze Job Description"
-3. Review the extracted information (job title, skills, experience, etc.)
+3. Review the extracted job requirements, responsibilities, and qualifications
 
 ### Step 2: Resume Upload
-1. Upload multiple candidate resumes (PDF format)
+1. Upload PDF resumes (drag and drop or select files)
 2. Click "Process Resumes"
-3. Wait for the system to extract and process each resume
+3. Wait while the system extracts and analyzes candidate information
 
-### Step 3: Matching and Scheduling
-1. Click "Match Resumes" to compare the job description with all resumes
-2. Review the results showing:
-   - Match scores for each candidate
-   - Section-by-section comparison
-   - Visual representation of match results
-3. Click the calendar icon next to qualified candidates to schedule interviews
-4. Select interview slots and send automated email invitations
+### Step 3: Candidate Matching
+1. Click "Start Matching Process"
+2. Review candidate rankings and match scores
+3. Expand candidate entries to see detailed section-by-section comparisons
+4. Use visualization charts to understand match quality
+
+### Step 4: Interview Scheduling
+1. Click the calendar icon next to qualified candidates
+2. Select interview date and time
+3. Add optional notes
+4. Send automated email invitations
 
 ## API Endpoints
 
-- `POST /embed` - Process a job description and generate embedding
-- `POST /upload-resumes` - Upload and process multiple resume PDFs
-- `POST /match` - Match current job description with processed resumes
-- `POST /prepare-interview-email/{candidate_id}` - Generate interview email for a candidate
-- `POST /send-email` - Send email to candidate
-- `GET /suggest-interview-times/{candidate_id}` - Generate available interview slots
-- `GET /clear-session` - Reset the current session data
-
-## Technology Stack
-
-- **Backend**: FastAPI, NLTK, spaCy, Sentence Transformers
-- **Frontend**: React, Vite, Tailwind CSS, Chart.js
-- **PDF Processing**: PDF.js, pdfplumber
-- **NLP**: Sentence Transformers for semantic embeddings
-- **Email**: SMTP for sending interview invitations
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/embed` | POST | Process job descriptions and generate embeddings |
+| `/upload-resumes` | POST | Upload and process multiple PDF resumes |
+| `/match` | POST | Match current job description with processed resumes |
+| `/suggest-interview-times/{candidate_id}` | GET | Generate available interview slots |
+| `/send-email` | POST | Send interview invitation to candidate |
+| `/clear-session` | GET | Reset the current session data |
 
 ## Troubleshooting
 
-### Verifying Agent Framework Operation
+- **PDF Processing Issues**: Ensure PDFs are not password-protected and have selectable text
+- **Match Quality Problems**: Longer, more detailed job descriptions provide better matches
+- **Backend Connection**: Verify the backend server is running and accessible
+- **Resume Parsing**: Use standard formatting in resumes for best section detection
 
-To verify the agent framework is correctly processing your PDFs:
+## Project Structure
 
-1. **Enable Debug Logging**:
-   ```
-   # In backend/app.py
-   import logging
-   logging.basicConfig(level=logging.DEBUG)
-   ```
+- `/backend` - FastAPI server with AI/NLP utilities
+  - `app.py` - Main server with API endpoints
+  - `agent_framework.py` - Multi-agent system implementation
+  - `jd_embedding_utils.py` - Job description parsing
+  - `resume_embedding_utils.py` - Resume parsing
+  - `matcher.py` - Matching algorithms
+  
+- `/frontend` - React application with workflow UI
+  - `/src/components` - UI components
+  - `/src/pages` - Main application pages
 
-2. **Monitor Agent Activities**:
-   The console will show detailed information about:
-   - PDF text extraction
-   - Section identification
-   - Embedding generation
-   - Matching calculations
-   - Agent communication
+## Contributors
 
-3. **Inspect API Responses**:
-   - After uploading PDFs, check the `/upload-resumes` response
-   - Review extracted sections and text quality
-   - Ensure candidate information is correctly identified
-
-4. **Validate PDF Processing**:
-   - Text extraction should maintain document structure
-   - Formatting issues like extra spaces or special characters should be handled
-   - Multi-column layouts and tables should be processed correctly
+- Advithiya Duddu
+- Aadi Joshi
